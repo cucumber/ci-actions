@@ -25,7 +25,7 @@ inputs:
 runs:
   using: composite
   steps:
-    # Resolve contents of dependency/.*.version file and
+    # Resolve contents of dependencies/<name>.version file and
     # derive a default checkout path (<name>-src) when none is supplied.
     - name: Resolve dependencies and checkout path
       id: resolve
