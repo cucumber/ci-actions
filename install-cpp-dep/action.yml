@@ -5,11 +5,8 @@ description: >-
   find it via find_package().
 
 inputs:
-  repository:
-    description: "owner/name of the repository to build (e.g. cucumber/messages)."
-    required: true
-  ref:
-    description: "Git ref (tag, branch, or SHA) to check out and build."
+  dependency:
+    description: "File containing a fully qualified reference to a GitHub repository (e.g. cucumber/messages@e5769e89dd8dd7aa7e8c8163023f38bad539e3aa # v34.2.1)"
     required: true
   path:
     description: >-
@@ -21,6 +18,9 @@ inputs:
     description: "CMake workflow preset used to build the dependency."
     required: false
     default: host-system
+  working-directory:
+    description: "Using the working-directory keyword, you can specify the working directory of where to run the command."
+    required: true
 
 runs:
   using: composite
@@ -28,20 +28,36 @@ runs:
     # Derive a default checkout path (<name>-src) when none is supplied.
     - name: Resolve checkout path
       id: resolve
+      working-directory: ${{ inputs.working-directory }}
       shell: bash
       run: |
+        if [ ! -f "${{ inputs.dependency }}" ]; then
+          echo "${{ inputs.dependency }} does not exist in ${{ inputs.working-directory }}" 
+          exit 1
+        fi
+        
+        reference=$(cat "${{ inputs.dependency }}" | grep -E "[0-9a-z]+/[0-9a-z]+@[0-9a-z]{40}( #.*)?")        
+        if [ -z "$reference" ]; then
+          echo "${{ inputs.dependency }} does not contain a valid reference" 
+          exit 1
+        fi
+        
+        repository=$(echo "$reference" | cut -d '@' -f 1)        
+        ref=$(echo "$reference" | cut -d '@' -f 2 | cut -d ' ' -f 1)        
+        
+        echo "repository=${repository}" >> "$GITHUB_OUTPUT"
+        echo "ref=${ref}" >> "$GITHUB_OUTPUT"
+        
         if [ -n "${{ inputs.path }}" ]; then
           echo "path=${{ inputs.path }}" >> "$GITHUB_OUTPUT"
         else
-          name="${{ inputs.repository }}"
-          echo "path=${name##*/}-src" >> "$GITHUB_OUTPUT"
+          echo "path=${repository##*/}-src" >> "$GITHUB_OUTPUT"
         fi
-
     - name: Checkout ${{ inputs.repository }}
       uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       with:
-        repository: ${{ inputs.repository }}
-        ref: ${{ inputs.ref }}
+        repository: ${{ steps.resolve.outputs.repository }}
+        ref: ${{ steps.resolve.outputs.ref }}
         path: ${{ steps.resolve.outputs.path }}
         persist-credentials: false
 
