@@ -25,25 +25,26 @@ inputs:
 runs:
   using: composite
   steps:
-    # Derive a default checkout path (<name>-src) when none is supplied.
-    - name: Resolve checkout path
+    # Resolve contents of dependency/.*.version file and
+    # derive a default checkout path (<name>-src) when none is supplied.
+    - name: Resolve dependencies and checkout path
       id: resolve
       working-directory: ${{ inputs.working-directory }}
       shell: bash
       run: |
         if [ ! -f "${{ inputs.dependency }}" ]; then
-          echo "${{ inputs.dependency }} does not exist in ${{ inputs.working-directory }}" 
+          echo "${{ inputs.dependency }} does not exist in ${{ inputs.working-directory }}"
           exit 1
         fi
         
-        reference=$(cat "${{ inputs.dependency }}" | grep -E "[0-9a-z]+/[0-9a-z]+@[0-9a-z]{40}( #.*)?")        
+        reference=$(cat "${{ inputs.dependency }}" | grep -E "[0-9a-z]+/[0-9a-z]+@[0-9a-z]{40}( #.*)?")
         if [ -z "$reference" ]; then
           echo "${{ inputs.dependency }} does not contain a valid reference" 
           exit 1
         fi
         
-        repository=$(echo "$reference" | cut -d '@' -f 1)        
-        ref=$(echo "$reference" | cut -d '@' -f 2 | cut -d ' ' -f 1)        
+        repository=$(echo "$reference" | cut -d '@' -f 1)
+        ref=$(echo "$reference" | cut -d '@' -f 2 | cut -d ' ' -f 1)
         
         echo "repository=${repository}" >> "$GITHUB_OUTPUT"
         echo "ref=${ref}" >> "$GITHUB_OUTPUT"
